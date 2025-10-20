@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>실생활 속 미적분 탐구 가이드 (미분/적분)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    
+    <!-- KaTeX for LaTeX Rendering -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" xintegrity="sha384-n8MVd4RsNIU0KOVEMVIARBEGEOKNAVsMYDguKTAPBIYC2pg7iN8ADMqaEAeDxmVg" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js" xintegrity="sha384-XjKyOOlV1eUZqs8bBF5BI5i/hpCKrE82GnsqQeUew9seeMohXeLpB4keo820OAXg" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" xintegrity="sha384-+VBxd3r6XgURycqtZ117nYw44OOcIax56Z4dCRWbxyPt0Koah1uHoK0o4+/RRE05" crossorigin="anonymous"></script>
+
+    <!-- Chosen Palette: Warm Neutrals (Background: neutral-100, Cards: white, Text: neutral-800, Accent: sky-500) -->
+    <!-- Application Structure Plan: The application is structured around a tab-based navigation system to separate 'Differentiation' (미분) from 'Integration' (적분). This allows users to focus on one concept at a time. The main view consists of a navigation bar and a dynamic grid. Clicking a tab updates the grid to show only the relevant application cards. The modal view for detailed exploration remains unchanged. This separation improves usability and provides a more structured learning path compared to a mixed grid. -->
+    <!-- Visualization & Content Choices: Content is categorized into 'differentiation' and 'integration'. Goal: To allow focused learning. Presentation: Tab navigation filters a card grid. Interaction: Users click tabs to switch categories, then click cards to open a detailed modal. Justification: This structure logically groups related concepts, preventing cognitive overload and making it easier for students to find specific examples for their reports. All visuals (Chart.js canvas) and LaTeX rendering are preserved within the modal to maintain detailed, high-quality content presentation. No SVG/Mermaid is used. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 40vh;
+        }
+        .modal-content {
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .tab-btn.active {
+            background-color: #0284c7; /* sky-600 */
+            color: white;
+        }
+    </style>
+</head>
+<body class="bg-neutral-100 text-neutral-800">
+
+    <div id="app" class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl md:text-5xl font-bold text-sky-700 mb-4">실생활 속 미적분 탐구 가이드</h1>
+            <p class="text-lg text-neutral-600 max-w-3xl mx-auto">
+                '미분'과 '적분'이 우리 생활 속에서 어떻게 활용되는지 나누어 탐구해 보세요.
+            </p>
+        </header>
+
+        <nav class="flex justify-center mb-12">
+            <div class="flex border border-neutral-300 rounded-lg p-1 bg-neutral-200">
+                <button id="diff-tab" class="tab-btn px-6 py-2 text-lg font-semibold rounded-md transition-colors duration-300">
+                    미분 (Differentiation)
+                </button>
+                <button id="int-tab" class="tab-btn px-6 py-2 text-lg font-semibold rounded-md transition-colors duration-300">
+                    적분 (Integration)
+                </button>
+            </div>
+        </nav>
+
+        <main id="card-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+        </main>
+    </div>
+
+    <div id="modal" class="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 hidden z-50">
+        <div class="modal-content bg-white rounded-2xl shadow-2xl w-full max-w-4xl p-8 relative">
+            <button id="close-modal-btn" class="absolute top-4 right-4 text-neutral-500 hover:text-neutral-800 text-3xl font-bold">&times;</button>
+            <div id="modal-body">
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const calculusData = [
+                {
+                    id: 1,
+                    category: 'integration',
+                    title: "자동차의 제동 거리",
+                    icon: "🚗",
+                    description: "속도를 적분하여 이동 거리를 계산합니다.",
+                    details: {
+                        situation: "자동차가 일정한 가속도로 브레이크를 밟을 때, 완전히 멈출 때까지 이동하는 거리를 계산합니다. 이는 안전 운전과 교통 시스템 설계에 매우 중요합니다.",
+                        modeling: `
+                            <p>시각 \\( t \\)에서의 속도를 \\( v(t) \\), 가속도를 \\( a(t) \\)라고 합시다. 운전자가 브레이크를 밟는 순간의 속도를 \\( v_0 \\) (초기 속도)라 하고, 브레이크에 의해 발생하는 가속도를 \\( -a \\) (일정한 음수 값)라고 가정합니다.</p>
+                            \\[ a(t) = -a \\]
+                            <p>가속도는 속도의 변화율이므로, \\( v(t) \\)는 \\( a(t) \\)의 부정적분 중 하나입니다.</p>
+                            \\[ v(t) = \\int(-a) \\,dt = -at + C \\]
+                            <p>\\( t=0 \\)일 때 속도가 \\( v_0 \\)이므로, \\( v(0) = C = v_0 \\) 입니다. 따라서 속도 함수는 다음과 같습니다.</p>
+                            \\[ v(t) = v_0 - at \\]
+                        `,
+                        application: `
+                            <p>자동차가 멈추는 것은 속도 \\( v(t) \\)가 0이 될 때입니다. \\( v(t) = 0 \\) 에서 \\( t = v_0/a \\) 입니다. 즉, 멈추는 데 걸리는 시간입니다.</p>
+                            <p>이동 거리 \\( L \\)은 속도 \\( v(t) \\)를 0부터 멈추는 시간 \\( v_0/a \\) 까지 정적분하여 구할 수 있습니다.</p>
+                            \\[ L = \\int_{0}^{v_0/a} (v_0 - at) \\,dt \\]
+                            \\[ = \\left[v_0t - \\frac{1}{2}at^2\\right]_{0}^{v_0/a} \\]
+                            \\[ = v_0\\left(\\frac{v_0}{a}\\right) - \\frac{1}{2}a\\left(\\frac{v_0}{a}\\right)^2 = \\frac{v_0^2}{a} - \\frac{v_0^2}{2a} = \\frac{v_0^2}{2a} \\]
+                            <p>따라서 제동 거리는 초기 속도의 제곱에 비례합니다. 속도가 2배가 되면 제동 거리는 4배가 됩니다.</p>
+                        `,
+                        research: "도로의 마찰 계수, 차량의 무게 등이 가속도 'a'에 어떤 영향을 미치는지 조사해보고, 다양한 상황에서의 제동 거리를 비교 분석해 보세요."
+                    }
+                },
+                {
+                    id: 2,
+                    category: 'differentiation',
+                    title: "기업의 이익 극대화",
+                    icon: "📈",
+                    description: "이익 함수를 미분하여 이익이 최대가 되는 생산량을 찾습니다.",
+                    details: {
+                        situation: "기업은 어떤 상품을 얼마나 생산해야 가장 큰 이익을 얻을 수 있는지 결정해야 합니다. 생산량에 따라 총수입(Revenue)과 총비용(Cost)이 변하고, 이익(Profit)은 총수입에서 총비용을 뺀 값입니다.",
+                        modeling: `
+                            <p>한 상품의 생산량을 \\( x \\)라고 할 때, 총수입 함수를 \\( R(x) \\), 총비용 함수를 \\( C(x) \\)라고 합시다. 예를 들어, \\( R(x) = -x^2 + 100x \\) 이고, \\( C(x) = x^2 + 20x + 500 \\) 이라고 가정해 봅시다.</p>
+                            \\[ P(x) = R(x) - C(x) = -2x^2 + 80x - 500 \\]
+                        `,
+                        application: `
+                            <p>최대 이익을 찾기 위해 이익 함수 \\( P(x) \\)를 미분하여 \\( P'(x) = 0 \\) 이 되는 \\( x \\) 값을 찾습니다.</p>
+                            \\[ P'(x) = -4x + 80 \\]
+                            <p>\\( P'(x) = 0 \\) 에서 \\( x = 20 \\) 입니다. \\( P''(x) = -4 < 0 \\) 이므로, \\( x=20 \\)에서 \\( P(x) \\)는 극대값이자 최대값을 갖습니다.</p>
+                            <p>따라서 20개의 상품을 생산할 때 이익이 극대화됩니다. 최대 이익은 \\( P(20) = 300 \\) 입니다.</p>
+                        `,
+                        research: "실제 기업의 가격 정책과 비용 구조를 조사하여 현실적인 수입 함수와 비용 함수를 모델링하고, 최적의 생산량을 찾아보세요.",
+                        chart: true,
+                        chartData: {
+                            labels: Array.from({length: 41}, (_, i) => i),
+                            datasets: [
+                                { label: '총수입 R(x)', data: Array.from({length: 41}, (_, i) => -i*i + 100*i), borderColor: 'rgb(59, 130, 246)', tension: 0.1, fill: false },
+                                { label: '총비용 C(x)', data: Array.from({length: 41}, (_, i) => i*i + 20*i + 500), borderColor: 'rgb(239, 68, 68)', tension: 0.1, fill: false },
+                                { label: '이익 P(x)', data: Array.from({length: 41}, (_, i) => (-i*i + 100*i) - (i*i + 20*i + 500)), borderColor: 'rgb(34, 197, 94)', tension: 0.1, fill: true, backgroundColor: 'rgba(34, 197, 94, 0.2)' }
+                            ]
+                        }
+                    }
+                },
+                {
+                    id: 3,
+                    category: 'differentiation',
+                    title: "물체의 자유 낙하",
+                    icon: "🪂",
+                    description: "위치 함수를 미분하여 속도와 가속도를 구합니다.",
+                    details: {
+                        situation: "높은 곳에서 물체를 떨어뜨릴 때, 시간에 따른 물체의 높이와 속도를 계산합니다. 공기 저항을 무시할 경우, 물체는 중력 가속도의 영향만 받습니다.",
+                        modeling: `
+                            <p>지면으로부터 \\( h_0 \\)의 높이에서 물체를 가만히 놓았을 때, \\( t \\)초 후의 높이를 \\( h(t) \\)라고 합시다. 중력 가속도를 \\( g \\approx 9.8 \\, \\text{m/s}^2 \\) 라고 하면, 물체의 위치는 다음과 같습니다.</p>
+                            \\[ h(t) = h_0 - \\frac{1}{2}gt^2 \\]
+                        `,
+                        application: `
+                            <p>\\( t \\)초 후의 속도 \\( v(t) \\)는 위치 함수 \\( h(t) \\)를 미분하여 구할 수 있습니다.</p>
+                            \\[ v(t) = h'(t) = -gt \\]
+                            <p>가속도 \\( a(t) \\)는 속도 함수 \\( v(t) \\)를 미분하여 구합니다.</p>
+                            \\[ a(t) = v'(t) = -g \\]
+                            <p>이는 가속도가 항상 중력 가속도 \\( -g \\)로 일정함을 보여줍니다.</p>
+                        `,
+                        research: "초기 속도를 가지고 위나 아래로 물체를 던졌을 때의 위치, 속도 함수는 어떻게 변할지 탐구하고, 최고 높이 도달 시간, 지면 도달 시간 등을 계산해 보세요.",
+                        chart: true,
+                        chartData: {
+                            labels: Array.from({length: 51}, (_, i) => i/10),
+                            datasets: [
+                                { type: 'line', label: '높이 h(t)', yAxisID: 'y-height', data: Array.from({length: 51}, (_, i) => { const t = i/10; return 100 - 0.5 * 9.8 * t * t; }).map(h => Math.max(0, h)), borderColor: 'rgb(59, 130, 246)', tension: 0.1 },
+                                { type: 'line', label: '속도 v(t)', yAxisID: 'y-velocity', data: Array.from({length: 51}, (_, i) => { const t = i/10; const h = 100 - 0.5 * 9.8 * t * t; return h > 0 ? -9.8 * t : 0; }), borderColor: 'rgb(239, 68, 68)', tension: 0.1 }
+                            ]
+                        }
+                    }
+                },
+                {
+                    id: 4,
+                    category: 'differentiation',
+                    title: "롤러코스터 디자인",
+                    icon: "🎢",
+                    description: "두 곡선이 부드럽게 연결되도록 미분계수를 일치시킵니다.",
+                    details: {
+                        situation: "롤러코스터 트랙은 여러 개의 곡선 구간으로 이루어져 있습니다. 승객의 안전과 스릴을 위해 각 구간이 만나는 지점에서 트랙이 급격하게 꺾이지 않고 부드럽게 연결되어야 합니다.",
+                        modeling: `
+                            <p>두 개의 다른 다항함수 \\( f(x) \\)와 \\( g(x) \\)로 표현되는 트랙 구간이 \\( x=a \\) 지점에서 만날 때, 부드럽게 연결되기 위한 조건은 다음과 같습니다.</p>
+                            <p>1. 함수값이 같다 (연속): \\( f(a) = g(a) \\)</p>
+                            <p>2. 미분계수가 같다 (매끄러움): \\( f'(a) = g'(a) \\)</p>
+                        `,
+                        application: `
+                            <p>예를 들어, \\( f(x) = x^2 \\) (\\( x \\le 1 \\)) 과 \\( g(x) = ax^3 + bx \\) (\\( x > 1 \\)) 이 \\( x=1 \\)에서 부드럽게 연결되도록 상수 \\( a, b \\)를 구해봅시다.</p>
+                            <p>\\( f(1)=g(1) \\)에서 \\( 1 = a + b \\) 입니다.</p>
+                            <p>\\( f'(1)=g'(1) \\)에서 \\( 2 = 3a + b \\) 입니다.</p>
+                            <p>두 식을 연립하여 풀면, \\( a = 1/2 \\), \\( b = 1/2 \\) 입니다. 따라서 \\( g(x) = \\frac{1}{2}x^3 + \\frac{1}{2}x \\) 로 설계하면 됩니다.</p>
+                        `,
+                        research: "세 개 이상의 다항함수 곡선을 부드럽게 연결하는 조건을 탐구하고, 자신만의 롤러코스터 트랙을 디자인해 보세요."
+                    }
+                },
+                {
+                    id: 5,
+                    category: 'differentiation',
+                    title: "혈중 약물 농도 예측",
+                    icon: "💊",
+                    description: "농도 함수를 미분하여 약효가 최대인 시점을 찾습니다.",
+                    details: {
+                        situation: "약을 복용하면 혈중 약물 농도가 시간에 따라 증가했다가 감소합니다. 약효가 언제 최대가 되고, 언제부터 약효가 떨어지는지 예측하는 것은 매우 중요합니다.",
+                        modeling: `
+                            <p>시간 \\( t \\)에 따른 혈중 약물 농도를 \\( C(t) = -t^3 + 6t^2 \\) (\\( t \\ge 0 \\)) 로 모델링할 수 있습니다.</p>
+                        `,
+                        application: `
+                            <p>농도가 최대가 되는 시간을 찾기 위해 \\( C(t) \\)를 미분하여 \\( C'(t)=0 \\)인 \\( t \\)를 찾습니다.</p>
+                            \\[ C'(t) = -3t^2 + 12t = -3t(t-4) \\]
+                            <p>\\( C'(t) = 0 \\) 에서 \\( t=4 \\)일 때 \\( C(t) \\)는 극대값이자 최대값을 갖습니다.</p>
+                            <p>따라서 약 복용 후 4시간이 지났을 때 혈중 농도가 최대로, 약효가 가장 강하게 나타납니다. 최대 농도는 \\( C(4) = 32 \\) 입니다.</p>
+                        `,
+                        research: "실제 약물 동력학 모델(PK model)은 더 복잡한 함수를 사용합니다. 간단한 다항함수 모델의 한계점과, 더 정교한 모델의 필요성에 대해 조사해 보세요."
+                    }
+                },
+                {
+                    id: 6,
+                    category: 'differentiation',
+                    title: "통조림 캔 최적화",
+                    icon: "🥫",
+                    description: "부피가 일정할 때 겉넓이가 최소가 되는 크기를 찾습니다.",
+                    details: {
+                        situation: "통조림 캔을 만드는 회사는 정해진 부피를 담으면서 재료의 양을 최소화하여 비용을 절감하고 싶어합니다. 이는 원기둥의 부피가 일정할 때 겉넓이를 최소화하는 문제입니다.",
+                        modeling: `
+                            <p>원기둥의 반지름을 \\( r \\), 높이를 \\( h \\)라고 합시다. 부피 \\( V = \\pi r^2 h \\)가 일정할 때, 겉넓이 \\( A = 2\\pi r^2 + 2\\pi rh \\)를 최소화해야 합니다. \\( h = V/(\\pi r^2) \\)를 대입하면,</p>
+                            \\[ A(r) = 2\\pi r^2 + \\frac{2V}{r} \\]
+                        `,
+                        application: `
+                            <p>겉넓이 \\( A(r) \\)을 최소화하기 위해 미분합니다.</p>
+                            \\[ A'(r) = 4\\pi r - \\frac{2V}{r^2} \\]
+                            <p>\\( A'(r) = 0 \\) 에서 \\( r = \\sqrt[3]{\\frac{V}{2\\pi}} \\) 일 때 겉넓이가 최소가 됩니다. 이때의 높이는 \\( h = 2r \\), 즉 높이가 지름과 같을 때 재료가 가장 적게 듭니다.</p>
+                        `,
+                        research: "실제 마트에서 파는 통조림 캔들의 반지름과 높이를 측정하여, 높이가 지름과 비슷한지 확인해보고, 그렇지 않다면 그 이유에 대해 탐구해 보세요."
+                    }
+                },
+                {
+                    id: 7,
+                    category: 'integration',
+                    title: "도로 건설과 토사량 계산",
+                    icon: "🚧",
+                    description: "지형의 단면적 함수를 적분하여 흙의 부피를 계산합니다.",
+                    details: {
+                        situation: "도로나 철도를 건설할 때, 지형을 깎거나 흙을 쌓아야 합니다. 이때 필요한 흙의 양(토사량)을 정확히 계산하는 것은 공사 비용 산정에 매우 중요합니다.",
+                        modeling: `
+                            <p>도로가 건설될 경로를 \\( x \\)축이라고 합시다. 각 위치 \\( x \\)에서의 지형 단면의 넓이를 \\( A(x) \\)라고 할 수 있습니다. 시작점(\\(\\ x=a \\))부터 끝점(\\(\\ x=b \\))까지 파내야 할 흙의 부피 \\( V \\)는 다음과 같습니다.</p>
+                            \\[ V = \\int_{a}^{b} A(x) \\,dx \\]
+                        `,
+                        application: `
+                            <p>어떤 구간 \\( [0, 100] \\)m 에서 단면적이 \\( A(x) = -0.01x^2 + x + 50 \\) (m²) 으로 모델링되었다고 합시다. 이 구간에서 파내야 할 총 흙의 부피 \\( V \\)는 다음과 같습니다.</p>
+                            \\[ V = \\int_{0}^{100} (-0.01x^2 + x + 50) \\,dx \\]
+                            \\[ = \\left[-\\frac{0.01}{3}x^3 + \\frac{1}{2}x^2 + 50x\\right]_{0}^{100} \\approx 6666.7 \\, (\\text{m}^3) \\]
+                            <p>따라서 약 6666.7 m³의 흙을 파내야 합니다.</p>
+                        `,
+                        research: "구분구적법의 원리를 이용하여 복잡한 지형의 부피를 근사하는 방법을 조사하고, 정적분과의 관계를 설명해 보세요."
+                    }
+                },
+                {
+                    id: 8,
+                    category: 'differentiation',
+                    title: "인구 변화율 예측",
+                    icon: "👨‍👩‍👧‍👦",
+                    description: "인구 함수 모델의 도함수를 통해 미래의 인구 증가/감소율을 예측합니다.",
+                    details: {
+                        situation: "정부는 미래의 인구 변화를 예측하여 다양한 정책을 수립해야 합니다. 과거 인구 데이터를 바탕으로 미래 인구를 예측하는 모델을 만들 수 있습니다.",
+                        modeling: `
+                            <p>특정 도시의 인구를 시간에 따른 함수 \\( P(t) = -t^3 + 90t^2 + 1000 \\) (\\( t \\)는 기준 연도로부터 지난 햇수) 로 모델링할 수 있습니다.</p>
+                        `,
+                        application: `
+                            <p>인구 변화율은 인구 함수 \\( P(t) \\)를 미분하여 구할 수 있습니다.</p>
+                            \\[ P'(t) = -3t^2 + 180t \\]
+                            <p>인구 증가 속도가 가장 빠른 시점은 \\( P'(t) \\)가 최대가 되는 시점이며, \\( P''(t)=0 \\)인 \\( t=30 \\)에서 변곡점을 가지므로 이때 증가율이 최대가 됩니다. \\( P'(t)=0 \\)인 \\( t=60 \\)에서 인구는 최대값을 갖고 감소하기 시작합니다.</p>
+                        `,
+                        research: "우리나라 또는 자신이 사는 지역의 과거 인구 데이터를 찾아보고, 이를 바탕으로 직접 다항함수 인구 모델을 만들어 미래 인구 변화를 예측해 보세요."
+                    }
+                },
+                {
+                    id: 9,
+                    category: 'integration',
+                    title: "물의 유량과 저수량",
+                    icon: "💧",
+                    description: "시간에 따른 유량 함수를 적분하여 특정 시간 동안 흐른 물의 총량을 구합니다.",
+                    details: {
+                        situation: "수도꼭지나 댐에서 방출되는 물의 양은 시간에 따라 일정하지 않을 수 있습니다. 특정 시간 동안 얼마나 많은 물이 흘러나왔는지 알려면 시간에 따른 유량을 알아야 합니다.",
+                        modeling: `
+                            <p>시간 \\( t \\)에서의 물의 유량을 \\( f(t) \\)라고 합시다. 예를 들어, 유량이 \\( f(t) = -t^2 + 10t \\) (L/min) 로 모델링될 수 있습니다 (\\( 0 \\le t \\le 10 \\)).</p>
+                        `,
+                        application: `
+                            <p>\\( t=0 \\)분부터 \\( t=5 \\)분까지 흘러나온 물의 총량 \\( V \\)는 유량 함수 \\( f(t) \\)를 구간 \\( [0, 5] \\)에서 정적분하여 구할 수 있습니다.</p>
+                            \\[ V = \\int_{0}^{5} (-t^2 + 10t) \\,dt \\]
+                            \\[ = \\left[-\\frac{1}{3}t^3 + 5t^2\\right]_{0}^{5} = \\frac{250}{3} \\approx 83.3 \\, (\\text{L}) \\]
+                            <p>따라서 5분 동안 약 83.3리터의 물이 흘러나왔습니다.</p>
+                        `,
+                        research: "수도꼭지를 틀 때 물이 나오는 속도를 시간에 따라 측정하여 유량 함수를 직접 모델링하고, 총 유출량을 계산해 보세요."
+                    }
+                },
+                {
+                    id: 10,
+                    category: 'differentiation',
+                    title: "구간 과속 단속",
+                    icon: "📸",
+                    description: "평균값 정리를 이용하여 구간 내 최고 속도를 추론합니다.",
+                    details: {
+                        situation: "구간 과속 단속은 특정 구간의 시작 지점과 끝 지점을 통과하는 시각을 측정하여 평균 속도를 계산합니다. 여기에는 미분의 평균값 정리가 숨어 있습니다.",
+                        modeling: `
+                            <p>자동차가 이동한 거리를 시간에 대한 함수 \\( f(t) \\)라고 합시다. 구간에서의 평균 속도는 다음과 같습니다.</p>
+                            \\[ \\text{평균 속도} = \\frac{f(b) - f(a)}{b - a} \\]
+                        `,
+                        application: `
+                            <p>미분의 <strong>평균값 정리</strong>에 따르면, 구간 평균 속도와 같아지는 순간 속도 \\( f'(c) \\)가 구간 내에 반드시 한 번 이상 존재합니다.</p>
+                            \\[ f'(c) = \\frac{f(b) - f(a)}{b - a} \\]
+                            <p>만약 5km 구간을 3분(1/20시간) 만에 통과했다면, 평균 속도는 100km/h 입니다. 평균값 정리에 의해 운전자는 이 구간 어딘가에서 반드시 100km/h의 속도로 달린 순간이 있었다는 결론을 내릴 수 있습니다.</p>
+                        `,
+                        research: "평균값 정리가 성립하기 위한 조건(연속, 미분 가능)이 실생활에서 어떤 의미를 갖는지, 그리고 이 조건이 만족되지 않는 예시가 있는지 탐구해 보세요."
+                    }
+                }
+            ];
+
+            const cardGrid = document.getElementById('card-grid');
+            const modal = document.getElementById('modal');
+            const modalBody = document.getElementById('modal-body');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+            const diffTab = document.getElementById('diff-tab');
+            const intTab = document.getElementById('int-tab');
+            
+            let currentChart = null;
+            let currentCategory = 'differentiation';
+
+            function renderCards(category) {
+                cardGrid.innerHTML = '';
+                const filteredData = calculusData.filter(item => item.category === category);
+                
+                filteredData.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white rounded-xl shadow-lg p-6 flex flex-col items-center text-center transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 cursor-pointer';
+                    card.dataset.id = item.id;
+                    card.innerHTML = `
+                        <div class="text-5xl mb-4">${item.icon}</div>
+                        <h3 class="text-xl font-bold text-neutral-800 mb-2">${item.title}</h3>
+                        <p class="text-neutral-600 flex-grow">${item.description}</p>
+                    `;
+                    cardGrid.appendChild(card);
+                });
+            }
+
+            function updateTabs() {
+                if (currentCategory === 'differentiation') {
+                    diffTab.classList.add('active');
+                    intTab.classList.remove('active');
+                } else {
+                    intTab.classList.add('active');
+                    diffTab.classList.remove('active');
+                }
+            }
+
+            diffTab.addEventListener('click', () => {
+                currentCategory = 'differentiation';
+                updateTabs();
+                renderCards(currentCategory);
+            });
+
+            intTab.addEventListener('click', () => {
+                currentCategory = 'integration';
+                updateTabs();
+                renderCards(currentCategory);
+            });
+
+            function showModal(id) {
+                const item = calculusData.find(d => d.id == id);
+                if (!item) return;
+                
+                let chartHtml = '';
+                if (item.chart) {
+                    chartHtml = `
+                        <h4 class="text-xl font-bold mt-6 mb-4 text-sky-600">📊 시각적 탐구</h4>
+                        <div class="chart-container bg-neutral-50 p-2 rounded-lg">
+                            <canvas id="modalChart"></canvas>
+                        </div>
+                    `;
+                }
+
+                modalBody.innerHTML = `
+                    <div class="flex items-center mb-6">
+                        <span class="text-4xl mr-4">${item.icon}</span>
+                        <h2 class="text-3xl font-bold text-sky-700">${item.title}</h2>
+                    </div>
+                    
+                    <div class="space-y-6">
+                        <div>
+                            <h4 class="text-xl font-bold mb-2 text-sky-600">🤔 상황 설명</h4>
+                            <div class="prose max-w-none text-neutral-700">${item.details.situation}</div>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-bold mb-2 text-sky-600">🧮 수학적 모델링</h4>
+                            <div class="prose max-w-none text-neutral-700 bg-neutral-50 p-4 rounded-lg">${item.details.modeling}</div>
+                        </div>
+                        <div>
+                            <h4 class="text-xl font-bold mb-2 text-sky-600">💡 미적분 적용</h4>
+                            <div class="prose max-w-none text-neutral-700">${item.details.application}</div>
+                        </div>
+                        ${chartHtml}
+                        <div>
+                            <h4 class="text-xl font-bold mt-6 mb-2 text-sky-600">🔬 탐구 과제 제안</h4>
+                            <div class="prose max-w-none text-neutral-700 border-l-4 border-sky-300 pl-4">${item.details.research}</div>
+                        </div>
+                    </div>
+                `;
+                
+                renderMathInElement(modalBody, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '\\[', right: '\\]', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false}
+                    ]
+                });
+                
+                modal.classList.remove('hidden');
+
+                if (item.chart) {
+                    const ctx = document.getElementById('modalChart').getContext('2d');
+                    if (currentChart) {
+                        currentChart.destroy();
+                    }
+                    
+                    let options = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' }, tooltip: { mode: 'index', intersect: false }}, interaction: { mode: 'nearest', axis: 'x', intersect: false }};
+                    if (item.id === 3) {
+                        options.scales = {
+                            'y-height': { type: 'linear', display: true, position: 'left', title: { display: true, text: 'Height (m)' } },
+                            'y-velocity': { type: 'linear', display: true, position: 'right', title: { display: true, text: 'Velocity (m/s)' }, grid: { drawOnChartArea: false } }
+                        };
+                    }
+                    currentChart = new Chart(ctx, { type: 'line', data: item.chartData, options: options });
+                }
+            }
+
+            function hideModal() {
+                modal.classList.add('hidden');
+                modalBody.innerHTML = '';
+                 if (currentChart) {
+                    currentChart.destroy();
+                    currentChart = null;
+                }
+            }
+
+            cardGrid.addEventListener('click', (e) => {
+                const card = e.target.closest('[data-id]');
+                if (card) {
+                    showModal(card.dataset.id);
+                }
+            });
+
+            closeModalBtn.addEventListener('click', hideModal);
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    hideModal();
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+                    hideModal();
+                }
+            });
+
+            // Initial load
+            updateTabs();
+            renderCards(currentCategory);
+        });
+    </script>
+</body>
+</html>
